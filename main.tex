@@ -1,0 +1,114 @@
+\documentclass[tikz]{standalone}
+\usepackage{xcolor-material} %colors
+\usepackage{pgfplots} %plot
+    \pgfplotsset{compat=1.18}
+    \usepgfplotslibrary{polar}
+
+\pgfplotsset{
+    legend image with text/.style={
+        legend image code/.code={%
+            \node[anchor=center] at (0.3cm,0cm) {#1};
+        }
+    },
+} % add values of the parameters to the legend, taken from https://tex.stackexchange.com/a/204519/144146
+
+%% KEPLER PROBLEM
+
+%Main Parameters
+\pgfmathsetmacro{\massone}{10} %first mass
+\pgfmathsetmacro{\masstwo}{1} %second mass
+\pgfmathsetmacro{\redj}{1} %angular momentum
+\pgfmathsetmacro{\redb}{0.5} %impact parameter (if it is too large, it may be the aphelion instead of the perihelion)
+
+%Auxiliary Parameters
+\pgfmathsetmacro{\masssum}{\massone+\masstwo}
+\pgfmathsetmacro{\redalph}{\massone*\masstwo}
+\pgfmathsetmacro{\redmu}{\redalph/\masssum}
+\pgfmathsetmacro{\redmuone}{abs(\redmu/\massone)}
+\pgfmathsetmacro{\redmutwo}{abs(\redmu/\masstwo)}    
+\pgfmathsetmacro{\rede}{sqrt(1 + ((2*\redj*\redj)/(\redalph*\redalph*\redmu))*(((\redj*\redj)/(2*\redmu*\redb*\redb)) - \redalph/\redb))}
+
+%Definition of Boundaries for Hyperbolae and Maximum Radii
+\ifdim\rede pt<1pt
+    \pgfmathsetmacro{\thmax}{2*pi} %maximum theta
+    \pgfmathsetmacro{\thinit}{0} %start theta
+    \pgfmathsetmacro{\thfin}{\thmax} %final theta
+    \pgfmathsetmacro{\rmin}{(\redj*\redj)/((1+\rede)*\redmu*\redalph)} %perihelion of the reduced mass ellipse
+    \pgfmathsetmacro{\rmax}{(\redj*\redj)/((1-\rede)*\redmu*\redalph)} %aphelion of the reduced mass ellipse
+    \ifdim\redmuone pt>1 pt
+        \ifdim\redmuone pt>\redmutwo pt
+            \pgfmathsetmacro{\rmax}{(\redmuone*\redj*\redj)/((1-\rede)*\redmu*\redalph)} %largest aphelion of the ellipses
+        \else 
+            \pgfmathsetmacro{\rmax}{(\redmutwo*\redj*\redj)/((1-\rede)*\redmu*\redalph)}
+        \fi
+    \else 
+        \ifdim\redmutwo pt>1 pt
+            \pgfmathsetmacro{\rmax}{(\redmutwo*\redj*\redj)/((1-\rede)*\redmu*\redalph)}
+        \fi
+    \fi
+\else
+    \pgfmathsetmacro{\thmax}{pi*acos(-1/\rede)/180}
+    \ifdim\masssum pt<0 pt
+        \pgfmathsetmacro{\thinit}{\thmax+0.01}
+        \pgfmathsetmacro{\thfin}{-\thmax-0.01+2*pi}
+        \pgfmathsetmacro{\rminaux}{(\redj*\redj)/((1-\rede)*\redmu*\redalph)} %perihelion of the reduced mass
+    \else
+        \pgfmathsetmacro{\thinit}{-\thmax+0.01}
+        \pgfmathsetmacro{\thfin}{\thmax-0.01}
+        \pgfmathsetmacro{\rminaux}{(\redj*\redj)/((1+\rede)*\redmu*\redalph)}
+    \fi
+
+    \ifdim\redmuone pt>1 pt
+        \ifdim\redmuone pt>\redmutwo pt
+            \pgfmathsetmacro{\rmin}{\redmuone*\rminaux} %largest perihelion of the ellipses
+        \else 
+            \pgfmathsetmacro{\rmin}{\redmutwo*\rminaux} 
+        \fi
+    \else 
+        \ifdim\redmutwo pt>1 pt
+            \pgfmathsetmacro{\rmin}{\redmutwo*\rminaux}
+        \else
+            \pgfmathsetmacro{\rmin}{\rminaux}
+        \fi
+    \fi
+    \pgfmathsetmacro{\rmax}{5*\rmin}
+\fi
+
+\pgfmathsetmacro{\ymax}{1.1*\rmax}
+
+
+\begin{document}
+\begin{tikzpicture}
+\begin{polaraxis}[
+    minor tick num = 0, %no minor ticks
+    xmajorgrids=true, %show angular grid lines
+    ymajorgrids=true, %show radial grid lines
+    ymax = \ymax, %maximum radius
+    ytick = {0.2*\ymax, 0.4*\ymax, 0.6*\ymax, 0.8*\ymax}, %evenly spaced radial grid lines
+    yticklabel = {\empty}, %no radial tick labels
+    y axis line style={draw=none}, %no radial line axis
+    ytick style={draw=none}, %no radial ticks
+    scaled ticks=false, %no 10^n indicator on the axis
+    legend style={at={(0.9,0.9)},anchor=south west}, %position of legend
+    height = 7.5cm %size of picture
+]    
+    \addplot+ [MaterialRed, thick, mark=none, samples=500, domain=\thinit:\thfin] (180*x/pi,{(\redj*\redj)/((\redmu*\redalph)*(1+\rede*cos(180*x/pi)))}); % reduced mass
+        \addlegendentry{\(\mu\)}
+    
+    \addplot+ [MaterialGreen, thick, mark=none, samples=500, domain=\thinit:\thfin] (180*x/pi,{(\redmu*\redj*\redj)/((\massone*\redmu*\redalph)*(1+\rede*cos(180*x/pi)))}); % mass 1
+        \addlegendentry{\(m_1\)}
+    
+    \addplot+ [MaterialBlue, thick, mark=none, samples=500, domain=\thinit:\thfin] (180*x/pi,{-(\redmu*\redj*\redj)/((\masstwo*\redmu*\redalph)*(1+\rede*cos(180*x/pi)))}); % mass 2
+        \addlegendentry{\(m_2\)}
+
+    \addlegendimage{legend image with text=\(m_1\)}
+        \addlegendentry{\(=\) \pgfmathprintnumber{\massone}}
+    \addlegendimage{legend image with text=\(m_2\)}
+        \addlegendentry{\(=\) \pgfmathprintnumber{\masstwo}}
+    \addlegendimage{legend image with text=\(j\)}
+        \addlegendentry{\(=\) \pgfmathprintnumber{\redj}}
+    \addlegendimage{legend image with text=\(b\)}
+        \addlegendentry{\(=\) \pgfmathprintnumber{\redb}}
+\end{polaraxis}
+\end{tikzpicture}
+\end{document}
